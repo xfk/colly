@@ -38,6 +38,8 @@ type Request struct {
 
 	//Previous URLs
 	Prev []url.URL
+	//XPath for previous URLs
+	XPath [][]map[string]string
 
 	// Method is the HTTP method of the request
 	Method string
@@ -72,6 +74,7 @@ func (r *Request) New(method, URL string, body io.Reader) (*Request, error) {
 		return nil, err
 	}
 	prev := make([]url.URL, 0)
+	xpath := make([][]map[string]string, 0)
 	return &Request{
 		Method:    method,
 		URL:       u,
@@ -81,6 +84,7 @@ func (r *Request) New(method, URL string, body io.Reader) (*Request, error) {
 		ID:        atomic.AddUint32(&r.collector.requestCount, 1),
 		collector: r.collector,
 		Prev:      prev,
+		XPath:     xpath,
 	}, nil
 }
 
@@ -116,17 +120,19 @@ func (r *Request) AbsoluteURL(u string) string {
 // Visit continues Collector's collecting job by creating a
 // request and preserves the Context of the previous request.
 // Visit also calls the previously provided callbacks
-func (r *Request) Visit(URL string) error {
+func (r *Request) Visit(URL string, xpath []map[string]string) error {
 	prev := append(r.Prev, *r.URL)
-	return r.collector.scrape(r.AbsoluteURL(URL), "GET", r.Depth+1, prev, nil, r.Ctx, nil, true)
+	xpaths := append(r.XPath, xpath)
+	return r.collector.scrape(r.AbsoluteURL(URL), "GET", r.Depth+1, prev, xpaths, nil, r.Ctx, nil, true)
 }
 
 // Post continues a collector job by creating a POST request and preserves the Context
 // of the previous request.
 // Post also calls the previously provided callbacks
-func (r *Request) Post(URL string, requestData map[string]string) error {
+func (r *Request) Post(URL string, requestData map[string]string, xpath []map[string]string) error {
 	prev := append(r.Prev, *r.URL)
-	return r.collector.scrape(r.AbsoluteURL(URL), "POST", r.Depth+1, prev, createFormReader(requestData), r.Ctx, nil, true)
+	xpaths := append(r.XPath, xpath)
+	return r.collector.scrape(r.AbsoluteURL(URL), "POST", r.Depth+1, prev, xpaths, createFormReader(requestData), r.Ctx, nil, true)
 }
 
 // PostRaw starts a collector job by creating a POST request with raw binary data.
@@ -134,7 +140,7 @@ func (r *Request) Post(URL string, requestData map[string]string) error {
 // and calls the previously provided callbacks
 func (r *Request) PostRaw(URL string, requestData []byte) error {
 	prev := append(r.Prev, *r.URL)
-	return r.collector.scrape(r.AbsoluteURL(URL), "POST", r.Depth+1, prev, bytes.NewReader(requestData), r.Ctx, nil, true)
+	return r.collector.scrape(r.AbsoluteURL(URL), "POST", r.Depth+1, prev, nil, bytes.NewReader(requestData), r.Ctx, nil, true)
 }
 
 // PostMultipart starts a collector job by creating a Multipart POST request
@@ -148,17 +154,17 @@ func (r *Request) PostMultipart(URL string, requestData map[string][]byte) error
 
 	prev := append(r.Prev, *r.URL)
 
-	return r.collector.scrape(r.AbsoluteURL(URL), "POST", r.Depth+1, prev, createMultipartReader(boundary, requestData), r.Ctx, hdr, true)
+	return r.collector.scrape(r.AbsoluteURL(URL), "POST", r.Depth+1, prev, nil, createMultipartReader(boundary, requestData), r.Ctx, hdr, true)
 }
 
 // Retry submits HTTP request again with the same parameters
 func (r *Request) Retry() error {
-	return r.collector.scrape(r.URL.String(), r.Method, r.Depth, r.Prev, r.Body, r.Ctx, *r.Headers, false)
+	return r.collector.scrape(r.URL.String(), r.Method, r.Depth, r.Prev, r.XPath, r.Body, r.Ctx, *r.Headers, false)
 }
 
 // Do submits the request
 func (r *Request) Do() error {
-	return r.collector.scrape(r.URL.String(), r.Method, r.Depth, r.Prev, r.Body, r.Ctx, *r.Headers, !r.collector.AllowURLRevisit)
+	return r.collector.scrape(r.URL.String(), r.Method, r.Depth, r.Prev, r.XPath, r.Body, r.Ctx, *r.Headers, !r.collector.AllowURLRevisit)
 }
 
 // Marshal serializes the Request
