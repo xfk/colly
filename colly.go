@@ -679,7 +679,8 @@ func (c *Collector) requestCheck(u, method string, depth int, checkRevisit bool)
 func (c *Collector) isDomainAllowed(domain string) bool {
 	fmt.Println(domain)
 	for _, d2 := range c.DisallowedDomains {
-		if d2 == domain {
+		//if d2 == domain {
+		if strings.Contains(domain, d2) {
 			return false
 		}
 	}
@@ -687,7 +688,8 @@ func (c *Collector) isDomainAllowed(domain string) bool {
 		return true
 	}
 	for _, d2 := range c.AllowedDomains {
-		if d2 == domain {
+		//if d2 == domain {
+		if strings.Contains(domain, d2) {
 			return true
 		}
 	}
