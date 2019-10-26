@@ -111,7 +111,11 @@ func (r *Request) AbsoluteURL(u string) string {
 // request and preserves the Context of the previous request.
 // Visit also calls the previously provided callbacks
 func (r *Request) Visit(URL string) error {
-	return r.collector.scrape(r.AbsoluteURL(URL), "GET", r.Depth+1, nil, r.Ctx, nil, true)
+	newCxt := NewContext()
+	for key, value := range r.Ctx.contextMap {
+		newCxt.contextMap[key] = value
+	}
+	return r.collector.scrape(r.AbsoluteURL(URL), "GET", r.Depth+1, nil, newCxt, nil, true)
 }
 
 // Post continues a collector job by creating a POST request and preserves the Context
